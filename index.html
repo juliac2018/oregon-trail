@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Oregon Trail Simulator</title>
+<style>
+:root{--bg:#dde7e8;--panel:#f3f7f6;--ink:#1f2b33;--mute:#56656e;--acc:#a8560f;--accInk:#fff;--good:#2d6a3f;--bad:#a1341f;--line:#b7c6c8;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#151b29;--panel:#1f2839;--ink:#e6e2d6;--mute:#9aa6b4;--acc:#e8a33d;--accInk:#1a1206;--good:#7cc68e;--bad:#f08a72;--line:#33405a}}
+:root[data-theme="dark"]{--bg:#151b29;--panel:#1f2839;--ink:#e6e2d6;--mute:#9aa6b4;--acc:#e8a33d;--accInk:#1a1206;--good:#7cc68e;--bad:#f08a72;--line:#33405a}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:1rem/1.5 Calibri,Carlito,'Segoe UI',Arial,sans-serif}
+main{max-width:640px;margin:0 auto;padding:1.5rem 1rem 3rem}
+h1,h2{font-weight:700;line-height:1.15;margin:0 0 .5rem}
+h1{font-size:1.8rem}h2{font-size:1.3rem}h3{font-size:1.05rem;margin:1.2rem 0 .4rem}
+p{margin:.4rem 0 1rem}
+.mute{color:var(--mute)}
+button,select,input{font:inherit;color:inherit}
+button{background:var(--acc);color:var(--accInk);border:0;border-radius:6px;padding:.65rem 1.2rem;cursor:pointer;font-weight:700;margin:.5rem .5rem 0 0}
+button.alt{background:transparent;color:var(--ink);border:1.5px solid var(--line)}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+input,select{background:var(--panel);border:1.5px solid var(--line);border-radius:6px;padding:.5rem .7rem}
+#names{display:grid;gap:.5rem;margin:1rem 0}
+label{display:block;font-weight:700}
+#hud{background:var(--panel);border:1.5px solid var(--line);border-radius:8px;padding:.8rem 1rem;margin-bottom:1.2rem}
+.track{position:relative;height:10px;background:var(--line);border-radius:5px;margin:.6rem 0 .9rem}
+.track i{position:absolute;inset:0 auto 0 0;background:var(--acc);border-radius:5px}
+.track b{position:absolute;top:-3px;width:2px;height:16px;background:var(--mute)}
+.nums{display:flex;flex-wrap:wrap;gap:.3rem 1.4rem;margin:0 0 .6rem}
+.party{list-style:none;margin:0;padding:0;display:grid;gap:.4rem}
+.party li{display:grid;grid-template-columns:1fr 90px;gap:.6rem;align-items:center}
+.party em{color:var(--bad);font-size:.85rem}
+.party .bar{height:8px;background:var(--line);border-radius:4px;overflow:hidden}
+.party .bar u{display:block;height:100%;background:var(--good)}
+.party .dead{color:var(--mute);text-decoration:line-through}
+.party .dead .bar{opacity:.4}
+ul.log{list-style:none;margin:0;padding:0;font-size:1rem}
+.log li{display:grid;grid-template-columns:4.2rem 1fr;gap:.6rem;padding:.35rem 0;border-bottom:1px dashed var(--line)}
+.log li.one{display:block}
+.log .d{color:var(--mute)}
+.log .good{color:var(--good)}.log .bad{color:var(--bad)}
+.log .death{color:var(--bad);font-weight:700}
+.log .lm{font-weight:700;color:var(--acc)}
+</style>
+</head>
+<body>
+<main>
+<h1>The Oregon Trail</h1>
+<div id="hud" hidden></div>
+
+<section class="screen" id="setup">
+  <p class="mute">Welcome to the best wagon ever! Who will survive?</p>
+  <label for="count">How many travelers?</label>
+  <select id="count"><option>1</option><option>2</option><option>3</option><option selected>4</option><option>5</option></select>
+  <div id="names"></div>
+  <button id="begin">Next</button>
+</section>
+
+<section class="screen" id="roster" hidden>
+  <h2>The Party</h2>
+  <p>Your wagon is loaded and the oxen are yoked. Everyone is healthy for now.</p>
+  <button id="depart">Next</button>
+</section>
+
+<section class="screen" id="legS" hidden>
+  <h2 id="legTitle"></h2>
+  <ul class="log" id="log"></ul>
+    <button id="next">Next</button>
+</section>
+
+<section class="screen" id="end" hidden>
+  <h2 id="endTitle"></h2>
+  <p id="endText"></p>
+  <h3>Recap</h3>
+  <ul class="log" id="recap"></ul>
+  <button id="fresh">Play again</button>
+</section>
+</main>
+
+<script>
+const $=s=>document.querySelector(s),R=(a,b)=>a+Math.floor(Math.random()*(b-a+1)),P=a=>a[Math.floor(Math.random()*a.length)];
+const esc=s=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const dt=d=>{const x=new Date(1848,3,d);return MO[x.getMonth()]+' '+x.getDate()};
+const DEF=['Ezra','Clara','Silas','Mabel','Amos'];
+const LM=[['Independence, Missouri',0],['the Kansas River',102,'river'],['the Big Blue River',185,'river'],['Fort Kearny',304,'fort'],['Chimney Rock',554],['Fort Laramie',640,'fort'],['Independence Rock',830],['South Pass',932],['Fort Bridger',989,'fort'],['Soda Springs',1151],['Fort Hall',1288,'fort'],['the Snake River',1419,'river'],['Fort Boise',1534,'fort'],['the Blue Mountains',1640],['Fort Walla Walla',1740,'fort'],['The Dalles',1840],['the Willamette Valley, Oregon',1980]];
+const END=1980;
+let S,names=[];
+const alive=()=>S.party.filter(p=>p.alive);
+const show=id=>{document.querySelectorAll('.screen').forEach(e=>e.hidden=e.id!==id);$('#hud').hidden=id==='setup';scrollTo(0,0)};
+
+function hurt(p,n,cause,say){p.hp-=n;if(p.hp<=0&&p.alive){p.alive=0;p.hp=0;S.deaths.push({n:p.n,cause,day:S.day,mile:S.miles});say(`${p.n} has died of ${cause}.`,'death')}}
+function sick(p,name,dmg,say){if(p.ill)return hurt(p,dmg,p.ill,say);p.ill=name;say(`${p.n} has come down with ${name}.`,'bad');hurt(p,dmg,name,say)}
+const lose=(n,say,txt)=>{n=Math.min(n,S.food);S.food-=n;say(txt.replace('#',n),'bad')};
+const gain=(n,say,txt)=>{S.food+=n;say(txt.replace('#',n),'good')};
+
+const EV=[
+{w:6,f:(p,s)=>sick(p,'dysentery',12,s)},
+{w:4,f:(p,s)=>sick(p,'cholera',22,s)},
+{w:3,f:(p,s)=>sick(p,'measles',10,s)},
+{w:2,f:(p,s)=>{s(`${p.n} was bitten by a snake.`,'bad');hurt(p,R(20,45),'a snakebite',s)}},
+{w:1.5,f:(p,s)=>{s(`${p.n} broke a leg.`,'bad');hurt(p,R(25,40),'a broken leg',s)}},
+{w:2,f:(p,s)=>lose(R(40,90),s,'Some of the food spoiled. -# lbs of food.')},
+{w:2,f:(p,s)=>lose(R(40,90),s,'Robbers raided the wagon overnight. -# lbs of food.')},
+{w:3,f:(p,s)=>gain(R(100,220),s,`${p.n} went hunting and brought back # lbs of food.`)}
+];
+
+function tick(say){
+  S.day++;
+  const al=alive(),c={mi:0},m=new Date(1848,3,S.day).getMonth();
+  const sk=al.filter(p=>p.ill).length;
+  c.mi=Math.round(R(12,19)*(1-.5*sk/al.length)*S.slow);
+  if(sk&&Math.random()<.12){const h=al.filter(p=>!p.ill);if(h.length)sick(P(h),P(['dysentery','cholera','measles']),8,say)}
+  if(Math.random()<.6){
+    const pool=EV.filter(e=>!e.ok||e.ok(m)),tot=pool.reduce((a,e)=>a+e.w,0);
+    let r=Math.random()*tot,e=pool[0];
+    for(const x of pool){if((r-=x.w)<0){e=x;break}}
+    e.f(P(al),say,c);
+  }
+  S.miles+=c.mi;
+  S.food-=2*alive().length;
+  if(S.food<=0){
+    S.food=0;
+    if(!S.hungry){say('The food is gone. The party is starving.','bad');S.hungry=1}
+    alive().forEach(p=>hurt(p,8,'starvation',say));
+  }else S.hungry=0;
+  alive().forEach(p=>{
+    if(p.ill){hurt(p,4,p.ill,say);if(p.alive&&Math.random()<.15){say(`${p.n} recovers from ${p.ill}.`,'good');p.ill=null}}
+    else p.hp=Math.min(100,p.hp+2);
+  });
+}
+
+function arrive(to,say){
+  say(`Reached ${to[0]}.`,'lm');
+  if(to[2]==='river'){
+    const r=Math.random();
+    if(r<.08){const v=P(alive());say('The wagon overturned while fording the river.','bad');hurt(v,100,'drowning',say)}
+    else if(r<.33)lose(R(50,120),say,'The wagon was swamped crossing the river. -# lbs of food.');
+    else say('The party forded the river safely.','good');
+  }
+  if(to[2]==='fort'&&alive().length){
+    const n=alive().length;
+    S.food+=60*n;alive().forEach(p=>p.hp=Math.min(100,p.hp+10));
+    say(`The party rested and traded for supplies. +${60*n} lbs of food.`,'good');
+  }
+}
+
+function hud(){
+  $('#hud').innerHTML=`<div class="track" role="img" aria-label="${S.miles} of ${END} miles traveled"><i style="width:${Math.min(100,S.miles/END*100)}%"></i>${LM.map(l=>`<b style="left:${l[1]/END*100}%"></b>`).join('')}</div>
+  <p class="nums"><span>Mile ${S.miles} of 1,980</span><span>Day ${S.day}</span><span>Food ${S.food} lbs</span></p>
+  <ul class="party">${S.party.map(p=>`<li class="${p.alive?'':'dead'}"><span>${p.alive?'':'† '}${esc(p.n)}${p.ill&&p.alive?` <em>${p.ill}</em>`:''}</span><div class="bar"><u style="width:${p.hp}%"></u></div></li>`).join('')}</ul>`;
+}
+const finished=()=>!alive().length||S.leg>=LM.length-1;
+
+function nextDay(){
+  const to=LM[S.leg+1],out=[],t0=S.miles;
+  const say=(m,c='')=>out.push({m,c});
+  tick(say);
+  if(alive().length){
+    out.unshift({m:`The party traveled ${Math.min(S.miles,to[1])-t0} miles.`,c:'mute'});
+    if(S.miles>=to[1]){S.miles=to[1];S.leg++;arrive(to,say)}
+  }
+  hud();show('legS');
+  $('#legTitle').textContent=`Day ${S.day}`;
+  $('#log').innerHTML=out.map(o=>`<li class="one"><span class="${o.c}">${esc(o.m)}</span></li>`).join('');
+}
+
+function results(){
+  hud();show('end');
+  const al=alive();
+  if(al.length){
+    $('#endTitle').textContent=al.length===S.party.length?'Everyone made it':'Journey\u2019s end';
+    $('#endText').textContent=`${al.map(p=>p.n).join(', ')} reached the Willamette Valley on day ${S.day}.`;
+  }else{
+    $('#endTitle').textContent='No one survived';
+    $('#endText').textContent=`The last traveler died on day ${S.day}, at mile ${S.miles}. The trail claims another wagon.`;
+  }
+  $('#recap').innerHTML=S.deaths.length?S.deaths.map(x=>`<li><span class="d">Day ${x.day}</span><span>${esc(x.n)} died of ${x.cause} at mile ${x.mile}.</span></li>`).join(''):'<li><span class="d"></span><span class="good">No graves were dug along the way.</span></li>';
+}
+
+function newRun(){
+  S={party:names.map(n=>({n,hp:100,alive:1,ill:null})),food:150*names.length,miles:0,day:0,leg:0,slow:1,deaths:[],hungry:0};
+  hud();show('roster');
+}
+function drawNames(){
+  const old=[...document.querySelectorAll('#names input')].map(e=>e.value);
+  const n=+$('#count').value;
+  $('#names').innerHTML=Array.from({length:n},(_,i)=>`<input aria-label="Traveler ${i+1} name" maxlength="18" value="${esc(old[i]||names[i]||DEF[i])}">`).join('');
+}
+$('#count').onchange=drawNames;
+$('#begin').onclick=()=>{names=[...document.querySelectorAll('#names input')].map((e,i)=>e.value.trim()||DEF[i]);newRun()};
+$('#depart').onclick=nextDay;
+$('#next').onclick=()=>finished()?results():nextDay();
+$('#fresh').onclick=()=>{names=[];drawNames();show('setup')};
+drawNames();
+</script>
+</body>
+</html>
