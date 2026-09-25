@@ -24,25 +24,34 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 input,select{background:var(--panel);border:1.5px solid var(--line);border-radius:6px;padding:.5rem .7rem}
 #names{display:grid;gap:.5rem;margin:1rem 0}
 label{display:block;font-weight:700}
-#hud{background:var(--panel);border:1.5px solid var(--line);border-radius:8px;padding:.8rem 1rem;margin-bottom:1.2rem}
-.track{position:relative;height:10px;background:var(--line);border-radius:5px;margin:.6rem 0 .9rem}
-.track i{position:absolute;inset:0 auto 0 0;background:var(--acc);border-radius:5px}
-.track b{position:absolute;top:-3px;width:2px;height:16px;background:var(--mute)}
-.nums{display:flex;flex-wrap:wrap;gap:.3rem 1.4rem;margin:0 0 .6rem}
-.party{list-style:none;margin:0;padding:0;display:grid;gap:.4rem}
-.party li{display:grid;grid-template-columns:1fr 90px;gap:.6rem;align-items:center}
-.party em{color:var(--bad);font-size:.85rem}
-.party .bar{height:8px;background:var(--line);border-radius:4px;overflow:hidden}
-.party .bar u{display:block;height:100%;background:var(--good)}
-.party .dead{color:var(--mute);text-decoration:line-through}
-.party .dead .bar{opacity:.4}
-ul.log{list-style:none;margin:0;padding:0;font-size:1rem}
-.log li{display:grid;grid-template-columns:4.2rem 1fr;gap:.6rem;padding:.35rem 0;border-bottom:1px dashed var(--line)}
-.log li.one{display:block}
-.log .d{color:var(--mute)}
+#hud{background:var(--panel);border:1.5px solid var(--line);border-radius:8px;padding:.8rem 1rem;margin-bottom:1.2rem;display:grid;gap:.8rem}
+.wagon{padding-bottom:.6rem;border-bottom:1px solid var(--line)}
+.wagon:last-child{border-bottom:0;padding-bottom:0}
+.wname{font-weight:700;margin-bottom:.25rem;display:flex;justify-content:space-between;gap:.5rem}
+.wname .tag{font-weight:400;color:var(--mute)}
+.wname .illness{font-weight:400;font-style:italic;color:var(--bad)}
+.wname .dead{color:var(--bad);font-weight:700}
+.brow{display:grid;grid-template-columns:4.2rem 1fr 3.8rem;align-items:center;gap:.5rem;font-size:.9rem}
+.brow .lbl{color:var(--mute)}
+.bar{position:relative;height:9px;background:var(--line);border-radius:5px;overflow:hidden}
+.bar u{display:block;height:100%}
+.bar.dist u{background:var(--acc)}
+.bar.hp u{background:var(--good)}
+.bar.dist b{position:absolute;top:-2px;width:2px;height:13px;background:var(--ink);opacity:.35}
+.brow.dist-row{grid-template-columns:4.2rem 1.5rem 1fr 3.8rem}
+.wicon{width:1.6rem;height:1.05rem;color:var(--acc);flex-shrink:0}
+.wagon.dead .bar u{background:var(--mute)}
+.wagon.dead{opacity:.65}
+.val{text-align:right;color:var(--mute)}
+ul.log{list-style:none;margin:0;padding:0}
+.log li{padding:.35rem 0;border-bottom:1px dashed var(--line)}
+.log li:last-child{border-bottom:0}
+.log b{font-weight:700}
 .log .good{color:var(--good)}.log .bad{color:var(--bad)}
 .log .death{color:var(--bad);font-weight:700}
-.log .lm{font-weight:700;color:var(--acc)}
+.log .lm{color:var(--acc);font-weight:700}
+ol.recap{margin:0;padding-left:1.3rem}
+ol.recap li{margin-bottom:.3rem}
 </style>
 </head>
 <body>
@@ -51,30 +60,30 @@ ul.log{list-style:none;margin:0;padding:0;font-size:1rem}
 <div id="hud" hidden></div>
 
 <section class="screen" id="setup">
-  <p class="mute">Welcome to the best wagon ever! Who will survive?</p>
-  <label for="count">How many travelers?</label>
+  <p class="mute">Welcome to the Oregon Trail.... best of luck to you all</p>
+  <label for="count">How many wagons?</label>
   <select id="count"><option>1</option><option>2</option><option>3</option><option selected>4</option><option>5</option></select>
   <div id="names"></div>
   <button id="begin">Next</button>
 </section>
 
 <section class="screen" id="roster" hidden>
-  <h2>The Party</h2>
-  <p>Your wagon is loaded and the oxen are yoked. Everyone is healthy for now.</p>
+  <h2>The Wagons</h2>
+  <p>Each traveler has their own wagon, their own oxen, and their own supplies. Everyone sets out healthy.</p>
   <button id="depart">Next</button>
 </section>
 
 <section class="screen" id="legS" hidden>
-  <h2 id="legTitle"></h2>
+  <h2 id="dayTitle"></h2>
   <ul class="log" id="log"></ul>
-    <button id="next">Next</button>
+  <button id="next">Next</button>
 </section>
 
 <section class="screen" id="end" hidden>
   <h2 id="endTitle"></h2>
   <p id="endText"></p>
-  <h3>Recap</h3>
-  <ul class="log" id="recap"></ul>
+  <h3>Final standings</h3>
+  <ol class="recap" id="recap"></ol>
   <button id="fresh">Play again</button>
 </section>
 </main>
@@ -82,112 +91,124 @@ ul.log{list-style:none;margin:0;padding:0;font-size:1rem}
 <script>
 const $=s=>document.querySelector(s),R=(a,b)=>a+Math.floor(Math.random()*(b-a+1)),P=a=>a[Math.floor(Math.random()*a.length)];
 const esc=s=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-const dt=d=>{const x=new Date(1848,3,d);return MO[x.getMonth()]+' '+x.getDate()};
 const DEF=['Ezra','Clara','Silas','Mabel','Amos'];
+
+// Landmarks along the trail: [name, mile marker, type]. type 'river' = a crossing; type 'fort' = rest & resupply.
 const LM=[['Independence, Missouri',0],['the Kansas River',102,'river'],['the Big Blue River',185,'river'],['Fort Kearny',304,'fort'],['Chimney Rock',554],['Fort Laramie',640,'fort'],['Independence Rock',830],['South Pass',932],['Fort Bridger',989,'fort'],['Soda Springs',1151],['Fort Hall',1288,'fort'],['the Snake River',1419,'river'],['Fort Boise',1534,'fort'],['the Blue Mountains',1640],['Fort Walla Walla',1740,'fort'],['The Dalles',1840],['the Willamette Valley, Oregon',1980]];
 const END=1980;
-let S,names=[];
-const alive=()=>S.party.filter(p=>p.alive);
-const show=id=>{document.querySelectorAll('.screen').forEach(e=>e.hidden=e.id!==id);$('#hud').hidden=id==='setup';scrollTo(0,0)};
+const OX_MAX=3;
+const OX_SPEED={0:.45,1:.75,2:1,3:1.15};
 
-function hurt(p,n,cause,say){p.hp-=n;if(p.hp<=0&&p.alive){p.alive=0;p.hp=0;S.deaths.push({n:p.n,cause,day:S.day,mile:S.miles});say(`${p.n} has died of ${cause}.`,'death')}}
-function sick(p,name,dmg,say){if(p.ill)return hurt(p,dmg,p.ill,say);p.ill=name;say(`${p.n} has come down with ${name}.`,'bad');hurt(p,dmg,name,say)}
-const lose=(n,say,txt)=>{n=Math.min(n,S.food);S.food-=n;say(txt.replace('#',n),'bad')};
-const gain=(n,say,txt)=>{S.food+=n;say(txt.replace('#',n),'good')};
+let wagons,names;
 
+function hurt(w,n,cause,say){w.hp-=n;if(w.hp<=0&&w.alive){w.alive=0;w.hp=0;w.deadDay=w.day;w.deadMile=Math.round(w.mi);w.deadCause=cause;say(w,`${w.n} has died of ${cause}.`,'death')}}
+function sick(w,say,name,dmg){if(w.ill)return hurt(w,dmg,w.ill,say);w.ill=name;w.illSince=w.day;w.illFor=R(3,6);say(w,`${w.n} has come down with ${name}.`,'bad');hurt(w,dmg,name,say)}
+const lose=(w,say,n,txt)=>{n=Math.min(n,w.food);w.food-=n;say(w,txt.replace('#',n),'bad')};
+const gain=(w,say,n,txt)=>{w.food+=n;say(w,txt.replace('#',n),'good')};
+
+// Random events that can strike an individual wagon on a given day.
 const EV=[
-{w:6,f:(p,s)=>sick(p,'dysentery',12,s)},
-{w:4,f:(p,s)=>sick(p,'cholera',22,s)},
-{w:3,f:(p,s)=>sick(p,'measles',10,s)},
-{w:2,f:(p,s)=>{s(`${p.n} was bitten by a snake.`,'bad');hurt(p,R(20,45),'a snakebite',s)}},
-{w:1.5,f:(p,s)=>{s(`${p.n} broke a leg.`,'bad');hurt(p,R(25,40),'a broken leg',s)}},
-{w:2,f:(p,s)=>lose(R(40,90),s,'Some of the food spoiled. -# lbs of food.')},
-{w:2,f:(p,s)=>lose(R(40,90),s,'Robbers raided the wagon overnight. -# lbs of food.')},
-{w:3,f:(p,s)=>gain(R(100,220),s,`${p.n} went hunting and brought back # lbs of food.`)}
+{w:6,f:(w,s)=>sick(w,s,'dysentery',12)},
+{w:4,f:(w,s)=>sick(w,s,'cholera',22)},
+{w:3,f:(w,s)=>sick(w,s,'measles',10)},
+{w:2,f:(w,s)=>{s(w,`${w.n} was bitten by a snake.`,'bad');hurt(w,R(20,45),'a snakebite',s)}},
+{w:1.5,f:(w,s)=>{s(w,`${w.n} broke a leg.`,'bad');hurt(w,R(25,40),'a broken leg',s)}},
+{w:2,f:(w,s)=>lose(w,s,R(40,90),'Some of the food spoiled. -# lbs of food.')},
+{w:2,f:(w,s)=>lose(w,s,R(40,90),'Robbers raided the wagon overnight. -# lbs of food.')},
+{w:3,f:(w,s)=>gain(w,s,R(100,220),`${w.n} went hunting and brought back # lbs of food.`)},
+{w:2,ok:w=>w.ox>0,f:(w,s)=>{w.ox--;s(w,'An ox wandered off overnight.','bad')}},
+{w:1.5,ok:w=>w.ox>0,f:(w,s)=>{w.ox--;s(w,'Thieves made off with an ox.','bad')}}
 ];
 
-function tick(say){
-  S.day++;
-  const al=alive(),c={mi:0},m=new Date(1848,3,S.day).getMonth();
-  const sk=al.filter(p=>p.ill).length;
-  c.mi=Math.round(R(12,19)*(1-.5*sk/al.length)*S.slow);
-  if(sk&&Math.random()<.12){const h=al.filter(p=>!p.ill);if(h.length)sick(P(h),P(['dysentery','cholera','measles']),8,say)}
-  if(Math.random()<.6){
-    const pool=EV.filter(e=>!e.ok||e.ok(m)),tot=pool.reduce((a,e)=>a+e.w,0);
-    let r=Math.random()*tot,e=pool[0];
-    for(const x of pool){if((r-=x.w)<0){e=x;break}}
-    e.f(P(al),say,c);
-  }
-  S.miles+=c.mi;
-  S.food-=2*alive().length;
-  if(S.food<=0){
-    S.food=0;
-    if(!S.hungry){say('The food is gone. The party is starving.','bad');S.hungry=1}
-    alive().forEach(p=>hurt(p,8,'starvation',say));
-  }else S.hungry=0;
-  alive().forEach(p=>{
-    if(p.ill){hurt(p,4,p.ill,say);if(p.alive&&Math.random()<.15){say(`${p.n} recovers from ${p.ill}.`,'good');p.ill=null}}
-    else p.hp=Math.min(100,p.hp+2);
-  });
-}
-
-function arrive(to,say){
-  say(`Reached ${to[0]}.`,'lm');
+function arrive(w,to,say){
+  say(w,`${w.n} reached ${to[0]}.`,'lm');
   if(to[2]==='river'){
     const r=Math.random();
-    if(r<.08){const v=P(alive());say('The wagon overturned while fording the river.','bad');hurt(v,100,'drowning',say)}
-    else if(r<.33)lose(R(50,120),say,'The wagon was swamped crossing the river. -# lbs of food.');
-    else say('The party forded the river safely.','good');
+    if(r<.18){const back=R(8,20);w.mi=Math.max(to[1]-1,w.mi-back);say(w,`The wagon tipped fording the river, losing time.`,'bad')}
+    else if(r<.4)lose(w,say,R(30,80),'The wagon was swamped crossing the river. -# lbs of food.');
+    else say(w,'The crossing went smoothly.','good');
   }
-  if(to[2]==='fort'&&alive().length){
-    const n=alive().length;
-    S.food+=60*n;alive().forEach(p=>p.hp=Math.min(100,p.hp+10));
-    say(`The party rested and traded for supplies. +${60*n} lbs of food.`,'good');
+  if(to[2]==='fort'){
+    const f=R(40,90);gain(w,say,f,'Rested and traded for supplies. +# lbs of food.');
+    if(w.ox<OX_MAX&&Math.random()<.5){w.ox++;say(w,'Traded for a fresh ox.','good')}
   }
 }
+
+// Simulate one day for one wagon.
+function tickWagon(w,say){
+  if(!w.alive||w.done)return;
+  w.day++;
+  const foodFactor=w.food<=0?.4:(w.food<80?.8:1);
+  const oxFactor=OX_SPEED[w.ox];
+  let mi=Math.round(R(12,19)*foodFactor*oxFactor*(w.ill?.75:1));
+  if(Math.random()<.55){
+    const pool=EV.filter(e=>!e.ok||e.ok(w)),tot=pool.reduce((a,e)=>a+e.w,0);
+    let r=Math.random()*tot,e=pool[0];
+    for(const x of pool){if((r-=x.w)<0){e=x;break}}
+    e.f(w,say);
+  }
+  if(w.alive){
+    w.mi+=mi;
+    w.food-=2;
+    if(w.food<=0){w.food=0;hurt(w,8,'starvation',say)}
+    if(w.alive&&w.ill&&w.illSince!==w.day){
+      hurt(w,4,w.ill,say);
+      w.illFor--;
+      if(w.alive&&w.illFor<=0&&Math.random()<.3){say(w,`${w.n} recovers from ${w.ill}.`,'good');w.ill=null}
+    }else if(w.alive&&!w.ill)w.hp=Math.min(100,w.hp+2);
+  }
+  while(w.alive&&w.leg<LM.length-1&&w.mi>=LM[w.leg+1][1]){
+    w.leg++;
+    if(w.leg===LM.length-1){w.mi=END;w.done=1;say(w,`${w.n} reached the Willamette Valley!`,'lm')}
+    else arrive(w,LM[w.leg],say);
+  }
+}
+
+const finished=()=>wagons.every(w=>w.done||!w.alive);
+const show=id=>{document.querySelectorAll('.screen').forEach(e=>e.hidden=e.id!==id);$('#hud').hidden=id==='setup';scrollTo(0,0)};
 
 function hud(){
-  $('#hud').innerHTML=`<div class="track" role="img" aria-label="${S.miles} of ${END} miles traveled"><i style="width:${Math.min(100,S.miles/END*100)}%"></i>${LM.map(l=>`<b style="left:${l[1]/END*100}%"></b>`).join('')}</div>
-  <p class="nums"><span>Mile ${S.miles} of 1,980</span><span>Day ${S.day}</span><span>Food ${S.food} lbs</span></p>
-  <ul class="party">${S.party.map(p=>`<li class="${p.alive?'':'dead'}"><span>${p.alive?'':'† '}${esc(p.n)}${p.ill&&p.alive?` <em>${p.ill}</em>`:''}</span><div class="bar"><u style="width:${p.hp}%"></u></div></li>`).join('')}</ul>`;
+  $('#hud').innerHTML=wagons.map(w=>`
+  <div class="wagon${w.alive?'':' dead'}">
+    <div class="wname"><span>${esc(w.n)}${w.ill&&w.alive?` <span class="illness">${w.ill}</span>`:''}${!w.alive?` <span class="dead">died day ${w.deadDay}</span>`:''}</span>${w.done?'<span class="tag">arrived</span>':''}</div>
+    <div class="brow dist-row"><span class="lbl">Distance</span><svg class="wicon" viewBox="0 0 32 20" aria-hidden="true"><path d="M6 10 Q16 -5 26 10" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M9 10 Q16 1 23 10" fill="none" stroke="currentColor" stroke-width="1" opacity=".6"/><rect x="5" y="10" width="22" height="5" rx=".5" fill="currentColor"/><line x1="27" y1="14" x2="31" y2="16.5" stroke="currentColor" stroke-width="1.4"/><circle cx="9" cy="16.5" r="3.2" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="23" cy="16.5" r="3.2" fill="none" stroke="currentColor" stroke-width="1.6"/><line x1="9" y1="13.3" x2="9" y2="19.7" stroke="currentColor" stroke-width="1"/><line x1="5.8" y1="16.5" x2="12.2" y2="16.5" stroke="currentColor" stroke-width="1"/><line x1="23" y1="13.3" x2="23" y2="19.7" stroke="currentColor" stroke-width="1"/><line x1="19.8" y1="16.5" x2="26.2" y2="16.5" stroke="currentColor" stroke-width="1"/></svg><div class="bar dist"><u style="width:${Math.min(100,w.mi/END*100)}%"></u>${LM.map(l=>`<b style="left:${l[1]/END*100}%"></b>`).join('')}</div><span class="val">${Math.min(END,Math.round(w.mi))}/${END}</span></div>
+    <div class="brow"><span class="lbl">Health</span><div class="bar hp"><u style="width:${w.hp}%"></u></div><span class="val">${w.hp}%</span></div>
+  </div>`).join('');
 }
-const finished=()=>!alive().length||S.leg>=LM.length-1;
 
 function nextDay(){
-  const to=LM[S.leg+1],out=[],t0=S.miles;
-  const say=(m,c='')=>out.push({m,c});
-  tick(say);
-  if(alive().length){
-    out.unshift({m:`The party traveled ${Math.min(S.miles,to[1])-t0} miles.`,c:'mute'});
-    if(S.miles>=to[1]){S.miles=to[1];S.leg++;arrive(to,say)}
-  }
+  const out=[];
+  const say=(w,m,c='')=>out.push({n:w.n,m,c});
+  wagons.forEach(w=>tickWagon(w,say));
   hud();show('legS');
-  $('#legTitle').textContent=`Day ${S.day}`;
-  $('#log').innerHTML=out.map(o=>`<li class="one"><span class="${o.c}">${esc(o.m)}</span></li>`).join('');
+  $('#dayTitle').textContent=`Day ${Math.max(...wagons.map(w=>w.day))}`;
+  $('#log').innerHTML=out.length?out.map(o=>`<li class="${o.c}"><b>${esc(o.n)}:</b> ${esc(o.m)}</li>`).join(''):'<li class="mute">A quiet day on the trail.</li>';
 }
 
 function results(){
   hud();show('end');
-  const al=alive();
-  if(al.length){
-    $('#endTitle').textContent=al.length===S.party.length?'Everyone made it':'Journey\u2019s end';
-    $('#endText').textContent=`${al.map(p=>p.n).join(', ')} reached the Willamette Valley on day ${S.day}.`;
+  const arrived=wagons.filter(w=>w.done).sort((a,b)=>a.day-b.day);
+  const dead=wagons.filter(w=>!w.alive).sort((a,b)=>a.deadDay-b.deadDay);
+  if(arrived.length){
+    $('#endTitle').textContent=arrived.length===wagons.length?'Everyone made it!':'Journey\u2019s end';
+    $('#endText').textContent=`${arrived[0].n} was first to reach the Willamette Valley, on day ${arrived[0].day}.`;
   }else{
     $('#endTitle').textContent='No one survived';
-    $('#endText').textContent=`The last traveler died on day ${S.day}, at mile ${S.miles}. The trail claims another wagon.`;
+    $('#endText').textContent='Every wagon was lost along the trail.';
   }
-  $('#recap').innerHTML=S.deaths.length?S.deaths.map(x=>`<li><span class="d">Day ${x.day}</span><span>${esc(x.n)} died of ${x.cause} at mile ${x.mile}.</span></li>`).join(''):'<li><span class="d"></span><span class="good">No graves were dug along the way.</span></li>';
+  const rows=[...arrived.map(w=>`<li>${esc(w.n)} \u2014 arrived on day ${w.day}</li>`),
+              ...dead.map(w=>`<li>${esc(w.n)} \u2014 died of ${w.deadCause} on day ${w.deadDay}, at mile ${w.deadMile}</li>`)];
+  $('#recap').innerHTML=rows.join('');
 }
 
 function newRun(){
-  S={party:names.map(n=>({n,hp:100,alive:1,ill:null})),food:150*names.length,miles:0,day:0,leg:0,slow:1,deaths:[],hungry:0};
+  wagons=names.map(n=>({n,hp:100,alive:1,ill:null,mi:0,day:0,leg:0,food:150,ox:2,done:0}));
   hud();show('roster');
 }
 function drawNames(){
   const old=[...document.querySelectorAll('#names input')].map(e=>e.value);
   const n=+$('#count').value;
-  $('#names').innerHTML=Array.from({length:n},(_,i)=>`<input aria-label="Traveler ${i+1} name" maxlength="18" value="${esc(old[i]||names[i]||DEF[i])}">`).join('');
+  $('#names').innerHTML=Array.from({length:n},(_,i)=>`<input aria-label="Wagon ${i+1} traveler name" maxlength="18" value="${esc(old[i]||(names&&names[i])||DEF[i])}">`).join('');
 }
 $('#count').onchange=drawNames;
 $('#begin').onclick=()=>{names=[...document.querySelectorAll('#names input')].map((e,i)=>e.value.trim()||DEF[i]);newRun()};
